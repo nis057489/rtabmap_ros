@@ -47,6 +47,9 @@ def launch_setup(context, *args, **kwargs):
         )
 
     # Paths
+    pkg_turtlebot3_gazebo = get_package_share_directory(
+        'turtlebot3_gazebo')
+
     nav2_launch = PathJoinSubstitution(
         [pkg_nav2_bringup, 'launch', 'navigation_launch.py'])
     rviz_launch = PathJoinSubstitution(
@@ -54,54 +57,16 @@ def launch_setup(context, *args, **kwargs):
     rtabmap_launch = PathJoinSubstitution(
         [pkg_rtabmap_demos, 'launch', 'turtlebot3', 'turtlebot3_scan.launch.py'])
 
-    # To use ICP odometry, we should increase clock rate of gazebo, we copied content of
-    # turtlebot3_gazebo/launch/turtlebot3_world.launch here
-    launch_file_dir = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'launch')
-    pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
-
-    world = os.path.join(
-        get_package_share_directory('turtlebot3_gazebo'),
-        'worlds',
-        f'turtlebot3_{world_name}.world'
-    )
-
-    import tempfile
-    with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as clock_override_file:
-        clock_override_file.write("---\n"+
-                  "gazebo:\n"+
-                  "    ros__parameters:\n"+
-                  "        publish_rate: 100.0")
-
-    gzserver_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
-        ),
-        launch_arguments={
-            'world': world,
-            'params_file': clock_override_file.name}.items()
-    )
-
-    gzclient_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')
-        )
-    )
-
-    robot_state_publisher_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(launch_file_dir, 'robot_state_publisher.launch.py')
-        ),
-        launch_arguments={'use_sim_time': 'true'}.items()
-    )
-
-    spawn_turtlebot_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(launch_file_dir, 'spawn_turtlebot3.launch.py')
-        ),
-        launch_arguments={
-            'x_pose': LaunchConfiguration('x_pose'),
-            'y_pose': LaunchConfiguration('y_pose')
-        }.items()
+    # Gazebo Sim (gz) launch from turtlebot3_gazebo.
+    # Note: older versions of this demo used gazebo_ros (classic Gazebo) via gzserver/gzclient.
+    gazebo_launch = PathJoinSubstitution(
+        [pkg_turtlebot3_gazebo, 'launch', f'turtlebot3_{world_name}.launch.py'])
+    gazebo = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([gazebo_launch]),
+        launch_arguments=[
+            ('x_pose', LaunchConfiguration('x_pose')),
+            ('y_pose', LaunchConfiguration('y_pose'))
+        ]
     )
     
     nav2 = IncludeLaunchDescription(
@@ -126,10 +91,7 @@ def launch_setup(context, *args, **kwargs):
         nav2,
         rviz,
         rtabmap,
-        gzserver_cmd,
-        gzclient_cmd,
-        robot_state_publisher_cmd,
-        spawn_turtlebot_cmd
+        gazebo
     ]
 
 def generate_launch_description():
