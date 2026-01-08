@@ -28,6 +28,7 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Opaq
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
+from launch_ros.actions import Node
 
 import os
 
@@ -84,11 +85,24 @@ def launch_setup(context, *args, **kwargs):
             ('use_sim_time', 'true')
         ]
     )
+
+    cmd_vel_stamper = Node(
+        package='cmd_vel_stamper',
+        executable='cmd_vel_stamper',
+        name='cmd_vel_stamper',
+        output='screen',
+        parameters=[
+            {'use_sim_time': True,
+             'input_topic': 'cmd_vel_unstamped',
+             'output_topic': 'cmd_vel'}
+        ]
+    )
     return [
         # Nodes to launch
         nav2,
         rviz,
         rtabmap,
+        cmd_vel_stamper,
         gazebo
     ]
 
